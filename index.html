@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水之茶 庫存管理系統 (自動扣料版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+<body class="bg-gray-950 min-h-screen text-gray-100 antialiased">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // 核心配方對照表 (未來增加品項直接加在這裡即可)
+        const RECIPE_MAP = {
+            "西瓜": { id: "g_melon", packs: 4 },
+            "酪梨": { id: "g_avocado", packs: 1 },
+            "芒果": { id: "g_mango", packs: 1 },
+            "芭樂": { id: "g_guava", packs: 1 },
+            "綜合蔬果": { id: "g_veggie", packs: 4 },
+            "石蓮花": { id: "g_lotus_l", packs: 1 }, // 請自行對應大/小規格
+            "紅豆": { id: "g_redbean", packs: 1 },
+            "綠豆": { id: "g_greenbean", packs: 1 },
+            "百香果粒": { id: "g_passion", packs: 1 },
+            "水果茶包": { id: "g_teabag", packs: 1 }
+        };
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtrmXs36Ea5v7bEE2GEJiZPBAcoA2dPZs",
+            databaseURL: "https://water-tea-system-default-rtdb.firebaseio.com",
+            projectId: "water-tea-system"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        function App() {
+            const [currentBranch, setCurrentBranch] = React.useState('自強店');
+            const branches = ['原物料商店', '自強店', '玉山店', '水上店', '家裡凍庫', '民雄凍庫'];
+
+            const processCSV = (file) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    const lines = text.split('\n');
+                    
+                    lines.forEach(line => {
+                        const [name, qty] = line.split(',');
+                        if (!name || !qty) return;
+
+                        // 智慧比對：找出配方對照表中的項目
+                        const matchKey = Object.keys(RECIPE_MAP).find(k => name.includes(k));
+                        if (matchKey) {
+                            const { id, packs } = RECIPE_MAP[matchKey];
+                            const totalConsume = parseInt(qty) * packs;
+
+                            // 只有 g_ 開頭的才扣除 (袋裝)，瓶支不處理
+                            if (id.startsWith('g_')) {
+                                database.ref(`stocks/${id}/${currentBranch}`).transaction(current => (current || 0) - totalConsume);
+                            }
+                        }
+                    });
+                    alert('已完成自動扣料！');
+                };
+                reader.readAsText(file);
+            };
+
+            return (
+                <div class="max-w-md mx-auto p-4 space-y-6">
+                    <div class="bg-gray-900 p-6 rounded-2xl border border-gray-700">
+                        <h1 class="text-xl font-bold mb-4">🏪 每日自動扣料</h1>
+                        <label class="block text-sm text-gray-400 mb-2">當前分店：{currentBranch}</label>
+                        <select onChange={(e) => setCurrentBranch(e.target.value)} class="w-full p-2 bg-gray-800 rounded-lg mb-4">
+                            {branches.map(b => <option value={b}>{b}</option>)}
+                        </select>
+                        
+                        <div class="border-2 border-dashed border-teal-800 p-4 rounded-xl text-center">
+                            <input type="file" accept=".csv" onChange={(e) => processCSV(e.target.files[0])} />
+                            <p class="text-xs text-gray-500 mt-2">上傳 CSV 後，系統將自動計算並扣除冷凍袋庫存。</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
