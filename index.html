@@ -1,0 +1,43 @@
+import pandas as pd
+
+# 1. 定義配方規則 (關鍵字: [大杯消耗, 特大消耗])
+RECIPE_MAP = {
+    '西瓜': [3, 4],
+    '甘蔗汁': [3, 4], '甘蔗牛奶': [3, 4],
+    '甘蔗': [2, 3], # 其餘甘蔗系列
+    '柳橙汁': [3, 4],
+    '柳橙': [2, 3], # 其餘柳橙系列
+    '綜合蔬果汁': [3, 4],
+    '芭樂': [1, 1], '木瓜': [1, 1], '酪梨': [1, 1],
+    '紅豆': [1, 1], '綠豆': [1, 1], '百香果粒': [1, 1],
+    '冰淇淋': [1, 1], '石蓮花': [1, 1], '草莓': [1, 1]
+}
+
+def calculate_usage(item_name, quantity, size):
+    """根據名稱關鍵字與杯數計算消耗包數"""
+    for keyword, packs in RECIPE_MAP.items():
+        if keyword in item_name:
+            # 判斷杯數並回傳消耗
+            return quantity * (packs[0] if 'L' in size else packs[1])
+    return 0
+
+def process_report(file_path):
+    # 讀取檔案 (這裡以熊貓檔案為例，Uber檔案邏輯類似)
+    df = pd.read_csv(file_path)
+    total_packs = 0
+    
+    for index, row in df.iterrows():
+        # 假設欄位名稱為 '商品名稱' 與 '數量'
+        item = row['商品名稱']
+        qty = row['數量']
+        # 假設你的檔名或欄位內含 L/XL
+        size = 'L' if '大杯' in item else 'XL' 
+        
+        total_packs += calculate_usage(item, qty, size)
+    
+    # 回傳總包數與換算的袋數 (1袋=48包)
+    return total_packs, total_packs / 48
+
+# 範例執行：
+# packs, bags = process_report('熊貓檔案.csv')
+# print(f"今日共消耗 {packs} 包，換算為 {bags:.2f} 袋")
